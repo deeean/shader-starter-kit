@@ -69,13 +69,16 @@ export default class Renderer {
 
     const positionLocation = gl.getAttribLocation(program, 'a_position');
 
-    gl.enableVertexAttribArray(positionLocation);
-    gl.vertexAttribPointer(positionLocation, this.dimensions, gl.FLOAT, false, 0, 0);
+    this.gl.enableVertexAttribArray(positionLocation);
+    this.gl.vertexAttribPointer(positionLocation, this.dimensions, gl.FLOAT, false, 0, 0);
 
     window.requestAnimationFrame(this.render);
   }
 
   render = (time: number) => {
+    this.gl.viewport(0, 0, this.width, this.height);
+    this.gl.clearColor(0, 0, 0, 0);
+    this.gl.clear(this.gl.COLOR_BUFFER_BIT);
     this.gl.useProgram(this.program);
     this.gl.uniform2f(this.uniformLocationMap['u_resolution'], this.width, this.height);
     this.gl.uniform1fv(this.uniformLocationMap['u_time'], [time * 0.001]);
