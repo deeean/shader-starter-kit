@@ -14,6 +14,10 @@ module.exports = {
         test: /\.ts$/,
         use: 'ts-loader',
         exclude: /node_modules/,
+      },
+      {
+        test: /\.glsl$|\.vert$|\.frag$/,
+        loader: 'webpack-glsl-loader'
       }
     ]
   },
