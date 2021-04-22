@@ -1,7 +1,7 @@
 import Renderer from './Renderer';
 
 window.addEventListener('load', () => {
-  const renderer = new Renderer({
+  new Renderer({
     width: 512,
     height: 512,
   });

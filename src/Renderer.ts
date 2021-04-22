@@ -6,6 +6,10 @@ export interface GLRendererOptions {
   height: number;
 }
 
+function isPowerOf2(value: number) {
+  return (value & (value - 1)) == 0;
+}
+
 export default class Renderer {
   canvas: HTMLCanvasElement;
   gl: WebGLRenderingContext;
@@ -16,8 +20,11 @@ export default class Renderer {
   program: WebGLProgram;
   vertices: number[];
   dimensions: number = 2;
-  uniforms: string[] = ['u_time', 'u_resolution'];
+  uniforms: string[] = ['u_time', 'u_resolution', 'channel0', 'channel1'];
   uniformLocationMap: { [key: string]: WebGLUniformLocation } = {};
+
+  channel0: WebGLTexture;
+  channel1: WebGLTexture;
 
   constructor({ width, height }: GLRendererOptions) {
     this.width = width;
@@ -48,7 +55,7 @@ export default class Renderer {
 
     const program = this.createProgram(vertexShader, fragmentShader);
     if (!program) {
-      throw new Error('program을 만들 수 없습니다.');
+      throw new Error('Program을 만들 수 없습니다.');
     }
 
     this.program = program;
@@ -72,6 +79,11 @@ export default class Renderer {
     this.gl.enableVertexAttribArray(positionLocation);
     this.gl.vertexAttribPointer(positionLocation, this.dimensions, gl.FLOAT, false, 0, 0);
 
+    this.gl.activeTexture(this.gl.TEXTURE0);
+    this.gl.bindTexture(this.gl.TEXTURE_2D, this.channel0);
+    this.gl.activeTexture(this.gl.TEXTURE1);
+    this.gl.bindTexture(this.gl.TEXTURE_2D, this.channel1);
+
     window.requestAnimationFrame(this.render);
   }
 
@@ -81,9 +93,33 @@ export default class Renderer {
     this.gl.clear(this.gl.COLOR_BUFFER_BIT);
     this.gl.useProgram(this.program);
     this.gl.uniform2f(this.uniformLocationMap['u_resolution'], this.width, this.height);
-    this.gl.uniform1fv(this.uniformLocationMap['u_time'], [time * 0.001]);
+    this.gl.uniform1f(this.uniformLocationMap['u_time'], time * 0.001);
+    this.gl.uniform1i(this.uniformLocationMap['channel0'], 0);
+    this.gl.uniform1i(this.uniformLocationMap['channel1'], 1);
     this.gl.drawArrays(this.gl.TRIANGLES, 0, this.vertices.length / this.dimensions);
     window.requestAnimationFrame(this.render);
+  }
+
+  createTexture(url: string) {
+    const image = new Image();
+    const texture = this.gl.createTexture();
+
+    image.addEventListener('load', () => {
+      this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
+      this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, image);
+
+      if (isPowerOf2(image.width) && isPowerOf2(image.height)) {
+        this.gl.generateMipmap(this.gl.TEXTURE_2D);
+      } else {
+        this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, this.gl.CLAMP_TO_EDGE);
+        this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, this.gl.CLAMP_TO_EDGE);
+        this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.LINEAR);
+      }
+    });
+
+    image.src = url;
+
+    return texture;
   }
 
   compileShader(type: GLenum, code: string) {
